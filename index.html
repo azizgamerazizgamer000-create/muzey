@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2e0610">
+<title>Virtual muzey</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wine:#5a0f1e; --wine-dark:#2e0610; --gold:#c9a24b; --gold-light:#ecd290; --cream:#f6ecd9; --ink:#2b1b14;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+body{
+  font-family:'Cormorant Garamond',Georgia,serif;
+  background:radial-gradient(ellipse at 50% 15%,var(--wine) 0%,var(--wine-dark) 78%) fixed;
+  color:var(--cream);overflow-x:hidden;
+}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:50}
+.screen{display:none;min-height:100dvh;padding:28px 18px 44px;flex-direction:column;align-items:center;justify-content:center;text-align:center;animation:fade .9s ease}
+.screen.active{display:flex}
+@keyframes fade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+h1,h2{font-family:'Playfair Display',serif;font-weight:500;color:var(--gold-light);letter-spacing:.04em}
+h1{font-size:2.2rem;margin-bottom:10px}
+h2{font-size:1.55rem;margin-bottom:6px}
+.sub{font-size:1.25rem;opacity:.88;font-style:italic;margin-bottom:24px;max-width:340px;line-height:1.35}
+.ornament{color:var(--gold);letter-spacing:.5em;margin:10px 0 22px;font-size:.9rem}
+.btn{
+  font-family:'Playfair Display',serif;font-size:1.05rem;letter-spacing:.08em;
+  background:transparent;color:var(--gold-light);border:1.5px solid var(--gold);
+  padding:13px 30px;border-radius:2px;cursor:pointer;transition:.3s;
+}
+.btn:hover,.btn:active{background:var(--gold);color:var(--wine-dark)}
+.btn:disabled{opacity:.5}
+.rooms{display:flex;gap:8px;margin-bottom:20px}
+.dot{width:9px;height:9px;border:1px solid var(--gold);border-radius:50%}
+.dot.on{background:var(--gold)}
+.roman{font-family:'Playfair Display',serif;color:var(--gold);letter-spacing:.3em;font-size:.95rem;margin-bottom:6px}
+.gifts{display:grid;grid-template-columns:1fr;gap:16px;width:100%;max-width:340px;margin:6px 0}
+.gift{
+  background:linear-gradient(160deg,rgba(246,236,217,.09),rgba(246,236,217,.02));
+  border:2px solid var(--gold);outline:1px solid rgba(201,162,75,.4);outline-offset:5px;
+  padding:16px 14px;cursor:pointer;transition:.35s;display:flex;align-items:center;gap:16px;text-align:left;
+}
+.gift:active{transform:scale(.98)}
+.gift .ic{font-size:2.5rem;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))}
+.gift .nm{font-family:'Playfair Display',serif;font-size:1.12rem;color:var(--gold-light)}
+.gift .ds{font-size:1.02rem;opacity:.82;font-style:italic}
+.gift.chosen{background:var(--gold)}
+.gift.chosen .nm,.gift.chosen .ds{color:var(--wine-dark);opacity:1}
+.gift.dim{opacity:.22;pointer-events:none}
+.reveal{margin-top:20px;max-width:330px;font-size:1.3rem;font-style:italic;color:var(--cream);min-height:3.6em;opacity:0;transition:opacity 1s;line-height:1.35}
+.reveal.show{opacity:1}
+.next{margin-top:14px;opacity:0;pointer-events:none;transition:opacity .8s}
+.next.show{opacity:1;pointer-events:auto}
+
+/* Final */
+.collection{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:2px 0 8px;max-width:340px}
+.col{width:54px;height:54px;border:1.5px solid var(--gold);outline:1px solid rgba(201,162,75,.4);outline-offset:3px;display:flex;align-items:center;justify-content:center;font-size:1.7rem;background:rgba(246,236,217,.06)}
+.vault{margin-top:18px;display:flex;flex-direction:column;align-items:center}
+.heartlock{width:190px;cursor:pointer;animation:beat 1.8s infinite;filter:drop-shadow(0 0 18px rgba(201,162,75,.45));background:none;border:0}
+.heartlock.shake{animation:shake .5s}
+@keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+#shackle{transform-box:fill-box;transform-origin:100% 100%;transition:transform .9s cubic-bezier(.3,1.4,.5,1)}
+.heartlock.open #shackle{transform:translateY(-10px) rotate(-32deg)}
+.heartlock.open{animation:none;filter:drop-shadow(0 0 34px rgba(236,210,144,.95))}
+.vault-cap{font-style:italic;font-size:1.2rem;opacity:.9;margin-top:8px;max-width:300px}
+.panel{display:none;flex-direction:column;align-items:center;margin-top:10px;width:100%}
+.panel.show{display:flex;animation:fade .6s ease}
+input.code{
+  width:100%;max-width:300px;background:transparent;border:none;border-bottom:1.5px solid var(--gold);
+  color:var(--gold-light);font-family:'Playfair Display',serif;font-size:1.35rem;text-align:center;padding:10px;outline:none;margin:6px 0 14px;
+}
+input.code::placeholder{color:rgba(236,210,144,.35);font-size:1rem}
+.err{min-height:1.5em;color:#f0a8a8;font-style:italic;margin-bottom:6px}
+.hint{font-style:italic;color:var(--gold-light);margin-bottom:12px;min-height:1.4em;max-width:300px}
+
+/* Xat */
+.letter{
+  max-width:350px;background:var(--cream);color:var(--ink);padding:30px 24px;border:1px solid var(--gold);
+  outline:1px solid var(--gold);outline-offset:6px;font-size:1.35rem;line-height:1.55;text-align:left;white-space:pre-line;
+  box-shadow:0 20px 50px rgba(0,0,0,.5);animation:fade 1.4s ease;
+}
+.letter .love{display:block;text-align:center;font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--wine);margin-top:18px}
+.heart{font-size:3.2rem;animation:beat 1.2s infinite;margin-bottom:16px}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+
+<!-- Kirish -->
+<section class="screen active" id="s-intro">
+  <div class="ornament">✦ ✦ ✦</div>
+  <h1>Virtual muzey</h1>
+  <p class="sub">Beshta zal. Har birida uchta sovg'a. Faqat bittasini tanlay olasiz.</p>
+  <button class="btn" id="enter">Kirish</button>
+</section>
+
+<!-- Zal -->
+<section class="screen" id="s-room">
+  <div class="rooms" id="dots"></div>
+  <div class="roman" id="r-roman"></div>
+  <h2 id="r-title"></h2>
+  <p class="sub" id="r-sub"></p>
+  <div class="gifts" id="gifts"></div>
+  <p class="reveal" id="reveal"></p>
+  <button class="btn next" id="next">Keyingi zal →</button>
+</section>
+
+<!-- Final: kolleksiya + yurak ichida qulf -->
+<section class="screen" id="s-final">
+  <div class="ornament">✦ ✦ ✦</div>
+  <h2>Muzey yakunlandi</h2>
+  <p class="sub">Siz tanlagan sovg'alar kolleksiyasi:</p>
+  <div class="collection" id="collection"></div>
+
+  <div class="vault">
+    <button class="heartlock" id="heartlock" aria-label="Yashirin xona">
+      <svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#a02039"/><stop offset="1" stop-color="#5a0f1e"/>
+          </linearGradient>
+          <linearGradient id="gg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f3dc9c"/><stop offset="1" stop-color="#b8903a"/>
+          </linearGradient>
+        </defs>
+        <path d="M100 170 C 20 110, 4 62, 36 32 C 60 10, 92 22, 100 46 C 108 22, 140 10, 164 32 C 196 62, 180 110, 100 170 Z"
+              fill="url(#hg)" stroke="#ecd290" stroke-width="3"/>
+        <g id="shackle">
+          <path d="M84 84 V70 a16 16 0 0 1 32 0 V84" fill="none" stroke="url(#gg)" stroke-width="7" stroke-linecap="round"/>
+        </g>
+        <rect x="76" y="82" width="48" height="40" rx="7" fill="url(#gg)" stroke="#8a6a24" stroke-width="1.5"/>
+        <circle cx="100" cy="98" r="5.5" fill="#5a0f1e"/>
+        <rect x="97.5" y="100" width="5" height="12" rx="2" fill="#5a0f1e"/>
+      </svg>
+    </button>
+    <p class="vault-cap" id="vcap">Yashirin xona qulflangan. Qulfni bosing.</p>
+    <div class="panel" id="panel">
+      <input class="code" id="code" placeholder="kalit so'z..." autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="err" id="err"></div>
+      <div class="hint" id="hint"></div>
+      <button class="btn" id="open">Ochish</button>
+    </div>
+  </div>
+</section>
+
+<!-- Xat -->
+<section class="screen" id="s-letter">
+  <div class="heart">❤️</div>
+  <div class="letter" id="letter"></div>
+</section>
+
+<script>
+const API='/.netlify/functions/secret';
+
+const ROOMS=[
+ {roman:"I zal",title:"Xushbo'ylik",sub:"Bittasini tanlang.",gifts:[
+  {ic:"🌹",nm:"Qizil atirgul",ds:"So'nmaydigan tuyg'u",fx:"🌹",msg:"Gullar so'nadi, lekin ba'zi tuyg'ular so'nmaydi."},
+  {ic:"🧴",nm:"Nafis atir",ds:"Xotirada qoladigan hid",fx:"✨",msg:"Eng go'zal xotiralar hid bilan qaytadi."},
+  {ic:"🕯️",nm:"Xushbo'y sham",ds:"Iliq va sokin oqshom",fx:"✨",msg:"Sham yonib turguncha, xona ham, yurak ham iliq."}]},
+ {roman:"II zal",title:"Musiqa",sub:"Qaysi kuy yuragingizga yaqin?",gifts:[
+  {ic:"🎹",nm:"Pianino",ds:"Sokin va nafis",fx:"🎵",msg:"Ba'zi kuylar so'zsiz ham hamma narsani aytadi."},
+  {ic:"🎻",nm:"Skripka",ds:"Nozik torlar",fx:"🎶",msg:"Eng nozik torlar eng chuqur tuyg'ularni chaladi."},
+  {ic:"🎧",nm:"Sevimli qo'shiq",ds:"Takror-takror tinglanadigan",fx:"🎵",msg:"Bitta qo'shiq butun kunni o'zgartira oladi."}]},
+ {roman:"III zal",title:"Sayohat",sub:"Qayerga borgingiz keladi?",gifts:[
+  {ic:"🗼",nm:"Shaharlar sari",ds:"Yangi ko'chalar, yangi manzaralar",fx:"✈️",msg:"Qayerga bormang, eng chiroyli manzil birga kulgan odamingiz."},
+  {ic:"🏝️",nm:"Orol",ds:"Dengiz, qum va sukunat",fx:"🌴",msg:"Dam olish ba'zan eng qimmat sovg'a."},
+  {ic:"🏔️",nm:"Tog'lar",ds:"Toza havo va cho'qqi",fx:"❄️",msg:"Cho'qqiga chiqish qiyin, lekin manzara hamma charchoqni unutdiradi."}]},
+ {roman:"IV zal",title:"Shirinliklar",sub:"Qaysi biri ko'proq yoqadi?",gifts:[
+  {ic:"🍫",nm:"Shokolad",ds:"Ozgina shirinlik",fx:"🍫",msg:"Shirinlik ham tanlashga arziydi."},
+  {ic:"🍰",nm:"Tort",ds:"Kichik bayram",fx:"🍰",msg:"Kichik bayram ham bayram."},
+  {ic:"🍓",nm:"Qulupnay",ds:"Yoz ta'mi",fx:"🍓",msg:"Eng shirin narsalar ko'pincha eng oddiy ko'rinadi."}]},
+ {roman:"V zal",title:"Yulduzlar",sub:"Oxirgi zal. Osmondan bittasini oling.",gifts:[
+  {ic:"🌙",nm:"Oy",ds:"Tun yoritgichi",fx:"⭐",msg:"Oy uxlamaydi, tunni siz uchun yoritib turadi."},
+  {ic:"⭐",nm:"Yulduz",ds:"Tilak uchun",fx:"✨",msg:"Kimdir sizni ayni shu yulduzlarga qarab eslayotgan bo'lishi mumkin."},
+  {ic:"🌌",nm:"Osmon",ds:"Chegarasiz",fx:"🌟",msg:"Osmon keng, lekin eng yorug' nuqta sizniki."}]}
+];
+
+const $=id=>document.getElementById(id);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');window.scrollTo(0,0)}
+function post(obj){return fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)})}
+
+/* Kirish haqida (QR orqalimi, havolami) bir marta xabar beradi */
+try{
+  if(!sessionStorage.getItem('v')){
+    sessionStorage.setItem('v','1');
+    post({type:'visit',src:new URLSearchParams(location.search).get('src')||''}).catch(()=>{});
+  }
+}catch(e){}
+
+let cur=0,picks=[],icons=[],finished=false;
+function enterRoom(i){
+  cur=i;const r=ROOMS[i];
+  $('r-roman').textContent=r.roman;$('r-title').textContent=r.title;$('r-sub').textContent=r.sub;
+  $('dots').innerHTML=ROOMS.map((_,k)=>`<span class="dot ${k<=i?'on':''}"></span>`).join('');
+  $('reveal').classList.remove('show');$('reveal').textContent='';
+  $('next').classList.remove('show');
+  $('next').textContent=(i===ROOMS.length-1)?'Yakunlash →':'Keyingi zal →';
+  const g=$('gifts');g.innerHTML='';
+  r.gifts.forEach((x,k)=>{
+    const d=document.createElement('div');d.className='gift';d.setAttribute('role','button');
+    const ic=document.createElement('div');ic.className='ic';ic.textContent=x.ic;
+    const box=document.createElement('div');
+    const nm=document.createElement('div');nm.className='nm';nm.textContent=x.nm;
+    const ds=document.createElement('div');ds.className='ds';ds.textContent=x.ds;
+    box.append(nm,ds);d.append(ic,box);
+    d.onclick=()=>choose(k,d);g.appendChild(d);
+  });
+  show('s-room');
+}
+function choose(k,el){
+  const x=ROOMS[cur].gifts[k];
+  document.querySelectorAll('.gift').forEach(e=>e.classList.add('dim'));
+  el.classList.remove('dim');el.classList.add('chosen');
+  picks[cur]=x.nm;icons[cur]=x.ic;
+  burst(x.fx);
+  setTimeout(()=>{$('reveal').textContent=x.msg;$('reveal').classList.add('show')},700);
+  setTimeout(()=>$('next').classList.add('show'),1800);
+}
+$('enter').onclick=()=>enterRoom(0);
+$('next').onclick=()=>{
+  if(cur+1<ROOMS.length){enterRoom(cur+1);return}
+  const c=$('collection');c.innerHTML='';
+  icons.forEach(s=>{const d=document.createElement('div');d.className='col';d.textContent=s;c.appendChild(d)});
+  show('s-final');burst('✨');
+  if(!finished){finished=true;post({type:'finish',picks}).catch(()=>{})}
+};
+
+/* Effekt */
+const cv=$('fx'),cx=cv.getContext('2d');let P=[],loop=false;
+function rs(){cv.width=innerWidth;cv.height=innerHeight}rs();addEventListener('resize',rs);
+function burst(sym){
+  for(let i=0;i<46;i++)P.push({x:Math.random()*cv.width,y:-20-Math.random()*220,vx:(Math.random()-.5)*1.4,vy:1.6+Math.random()*2.6,
+    r:Math.random()*6,s:14+Math.random()*16,sym,a:1});
+  if(!loop)tick();
+}
+function tick(){
+  loop=true;cx.clearRect(0,0,cv.width,cv.height);
+  P.forEach(p=>{p.x+=p.vx+Math.sin(p.y/40)*.6;p.y+=p.vy;p.r+=.04;
+    cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.globalAlpha=Math.max(p.a,0);cx.font=p.s+'px serif';cx.fillText(p.sym,0,0);cx.restore();
+    if(p.y>cv.height*.9)p.a-=.03;});
+  P=P.filter(p=>p.a>0&&p.y<cv.height+40);
+  if(P.length)requestAnimationFrame(tick);else{loop=false;cx.clearRect(0,0,cv.width,cv.height)}
+}
+
+/* Yashirin xona: javob serverda tekshiriladi */
+let tries=0,busy=false;
+$('heartlock').onclick=()=>{
+  $('panel').classList.add('show');$('vcap').style.display='none';
+  setTimeout(()=>$('code').focus(),50);
+};
+async function attempt(){
+  const v=$('code').value.trim();if(!v||busy)return;
+  busy=true;$('open').disabled=true;$('err').textContent='';
+  try{
+    const r=await post({type:'attempt',code:v});
+    const j=await r.json();
+    if(j.ok){
+      $('heartlock').classList.add('open');
+      burst('❤️');
+      setTimeout(()=>{
+        const L=$('letter');L.textContent=j.letter;
+        const s=document.createElement('span');s.className='love';s.textContent='Men seni sevaman ❤️';L.appendChild(s);
+        show('s-letter');burst('❤️');setTimeout(()=>burst('✨'),1500);setTimeout(()=>burst('❤️'),3200);
+      },1300);
+      return;
+    }
+    tries++;
+    const h=$('heartlock');h.classList.remove('shake');void h.offsetWidth;h.classList.add('shake');
+    $('err').textContent="Qulf ochilmadi. Yana urinib ko'ring.";
+    $('code').value='';
+    if(tries>=2)$('hint').textContent="Ishora: sen o'qigan maktab…";
+  }catch(e){$('err').textContent="Aloqa yo'q, birozdan keyin urinib ko'ring."}
+  busy=false;$('open').disabled=false;
+}
+$('open').onclick=attempt;
+$('code').addEventListener('keydown',e=>{if(e.key==='Enter')attempt()});
+</script>
+</body>
+</html>
